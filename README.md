@@ -11,4 +11,4 @@ Please refer to the [original contract](https://liveproject.manning.com/module/1
 
 Made by Trout Consulting
 
-Repository for liveProject: Accounting with Fundamental Rust
+Repository for liveProject: Fundamentals and Accounting
