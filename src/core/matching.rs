@@ -447,7 +447,7 @@ mod tests {
         assert_eq!(charlie_receipt.matches, vec![]);
         assert_eq!(charlie_receipt.ordinal, 2);
 
-        let bob_receipt = matching_engine
+        let alice_receipt = matching_engine
             .process(Order {
                 price: 10,
                 amount: 2,
@@ -457,7 +457,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            bob_receipt.matches,
+            alice_receipt.matches,
             vec![PartialOrder {
                 price: 10,
                 amount: 1,
