@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-
 /// An application-specific error type
 #[derive(Debug)]
 enum AccountingError {
     // Add variants here for account not found, account underfunded and account overfunded
+    AccountNotFound(String),
+    AccountUnderFunded(String, u64),
+    AccountOverFunded(String, u64),
 }
 
 /// A transaction type. Transactions should be able to rebuild a ledger's state
@@ -12,20 +14,22 @@ enum AccountingError {
 #[derive(Debug)]
 pub enum Tx {
     // Add variants for storing withdraw/deposit transactions
+    Deposit { account: String, amount: u64 },
+    Withdraw { account: String, amount: u64 },
 }
 
 /// A type for managing accounts and their current currency balance
 #[derive(Debug)]
 struct Accounts {
     // Add a property `accounts` here
+    accounts: HashMap<String, u64>,
 }
 
 impl Accounts {
-
     /// Returns an empty instance of the [`Accounts`] type
     pub fn new() -> Self {
         Accounts {
-            accounts: Default::default()
+            accounts: Default::default(),
         }
     }
 
@@ -62,7 +66,29 @@ impl Accounts {
     /// # Errors
     /// Attempted overflow
     pub fn withdraw(&mut self, signer: &str, amount: u64) -> Result<Tx, AccountingError> {
-        todo!();
+        if let Some(balance) = self.accounts.get_mut(signer) {
+            balance
+                .checked_sub(amount)
+                .and_then(|r| {
+                    *balance = r;
+                    Some(r)
+                })
+                .ok_or_else(|| {
+                    AccountingError::AccountUnderFunded(
+                        format!("Underfunded account for {}", signer.to_string()),
+                        amount,
+                    )
+                })
+                .map(|_| Tx::Withdraw {
+                    account: signer.to_string(),
+                    amount,
+                })
+        } else {
+            return Err(AccountingError::AccountNotFound(format!(
+                "Account not found for {}",
+                signer.to_string()
+            )));
+        }
     }
 
     /// Withdraws the amount from the sender account and deposits it in the recipient account.
@@ -75,7 +101,10 @@ impl Accounts {
         recipient: &str,
         amount: u64,
     ) -> Result<(Tx, Tx), AccountingError> {
-       todo!();
+        let withdrawal = self.withdraw(sender, amount)?;
+        let deposit = self.deposit(recipient, amount)?;
+
+        Ok((withdrawal, deposit))
     }
 }
 
