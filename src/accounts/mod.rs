@@ -22,9 +22,9 @@ impl Accounts {
         if let Some(account) = self.accounts.get_mut(signer) {
             (*account)
                 .checked_add(amount)
-                .and_then(|r| {
+                .map(|r| {
                     *account = r;
-                    Some(r)
+                    r
                 })
                 .ok_or(AccountingError::AccountOverFunded(
                     signer.to_string(),
@@ -51,13 +51,13 @@ impl Accounts {
         if let Some(balance) = self.accounts.get_mut(signer) {
             balance
                 .checked_sub(amount)
-                .and_then(|r| {
+                .map(|r| {
                     *balance = r;
-                    Some(r)
+                    r
                 })
                 .ok_or_else(|| {
                     AccountingError::AccountUnderFunded(
-                        format!("Underfunded account for {}", signer.to_string()),
+                        format!("Underfunded account for {}", signer),
                         amount,
                     )
                 })
@@ -66,10 +66,10 @@ impl Accounts {
                     amount,
                 })
         } else {
-            return Err(AccountingError::AccountNotFound(format!(
+            Err(AccountingError::AccountNotFound(format!(
                 "Account not found for {}",
-                signer.to_string()
-            )));
+                signer
+            )))
         }
     }
 
