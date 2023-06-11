@@ -2,6 +2,7 @@ use std::io;
 mod accounting;
 mod core;
 mod errors;
+mod trading_platform;
 mod tx;
 use crate::accounting::Accounts;
 

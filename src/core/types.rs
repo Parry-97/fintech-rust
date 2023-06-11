@@ -23,7 +23,6 @@ pub struct Order {
 }
 
 impl Order {
-
     /// Convert an [`Order`] into a [`PartialOrder`] with the added parameters
     pub fn into_partial_order(self, ordinal: u64, remaining: u64) -> PartialOrder {
         let Order {
@@ -78,7 +77,6 @@ pub struct Receipt {
 }
 
 impl PartialOrder {
-    
     /// Splits one [`PartialOrder`] into two by taking a defined `take` amount
     pub fn take_from(pos: &mut PartialOrder, take: u64, price: u64) -> PartialOrder {
         pos.remaining -= take;

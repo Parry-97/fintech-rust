@@ -1,43 +1,70 @@
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 use crate::{
     accounting::Accounts,
     core::{MatchingEngine, Order, PartialOrder, Receipt, Side},
-    errors::{ApplicationError, ApplicationError},
+    errors::ApplicationError,
     tx::Tx,
 };
 
 /// The core of the core: the [`TradingPlatform`]. Manages accounts, validates-, and orchestrates the processing of each order.
 pub struct TradingPlatform {
-    todo!();
+    matching_engine: MatchingEngine,
+    accounts: Accounts,
+    tx_log: Vec<Tx>,
 }
 
 impl TradingPlatform {
     /// Creates a new instance without any data.
     pub fn new() -> Self {
         TradingPlatform {
-            todo!();
+            accounts: Accounts::new(),
+            matching_engine: MatchingEngine::new(),
+            tx_log: vec![],
         }
     }
 
     /// Fetches the complete order book at this time
     pub fn orderbook(&self) -> Vec<PartialOrder> {
-        todo!();
+        // let orderbook = vec![];
+        let mut asks = self
+            .matching_engine
+            .asks
+            .values()
+            .cloned()
+            .flatten()
+            .collect::<Vec<PartialOrder>>();
+
+        let mut bids = self
+            .matching_engine
+            .bids
+            .values()
+            .cloned()
+            .flatten()
+            .collect::<Vec<PartialOrder>>();
+        asks.append(&mut bids);
+        asks
     }
 
     /// Withdraw funds
     pub fn balance_of(&mut self, signer: &str) -> Result<&u64, ApplicationError> {
-        todo!();
+        self.accounts.balance_of(signer)
     }
 
     /// Deposit funds
     pub fn deposit(&mut self, signer: &str, amount: u64) -> Result<Tx, ApplicationError> {
-        todo!();
+        let deposit = self.accounts.deposit(signer, amount)?;
+        let log = deposit.clone();
+        self.tx_log.push(log);
+        Ok(deposit)
     }
 
     /// Withdraw funds
     pub fn withdraw(&mut self, signer: &str, amount: u64) -> Result<Tx, ApplicationError> {
-        todo!();
+        let withdraw = self.accounts.withdraw(signer, amount)?;
+        let log = withdraw.clone();
+        self.tx_log.push(log);
+        Ok(withdraw)
     }
 
     /// Transfer funds between sender and recipient
@@ -47,12 +74,41 @@ impl TradingPlatform {
         recipient: &str,
         amount: u64,
     ) -> Result<(Tx, Tx), ApplicationError> {
-        todo!();
+        let (tx1, tx2) = self.accounts.send(sender, recipient, amount)?;
+        let log1 = tx1.clone();
+        let log2 = tx2.clone();
+        self.tx_log.push(log1);
+        self.tx_log.push(log2);
+        Ok((tx1, tx2))
     }
 
     /// Process a given order and apply the outcome to the accounts involved. Note that there are very few safeguards in place.
     pub fn order(&mut self, order: Order) -> Result<Receipt, ApplicationError> {
-        todo!();
+        let balance = self.accounts.balance_of(&order.signer)?;
+        if order.side == Side::Sell && balance < &(order.amount * order.price) {
+            return Err(ApplicationError::AccountUnderFunded(
+                String::from("Not enough solvency"),
+                order.amount * order.price,
+            ));
+        } else {
+            let order_signer = order.signer.clone();
+            let order_side = order.side.clone();
+            let receipt = self.matching_engine.process(order)?;
+            let total_realized: u64 = receipt.matches.iter().map(|m| m.price * m.amount).sum();
+
+            match order_side {
+                Side::Buy => receipt.matches.iter().for_each(|m| {
+                    self.send(order_signer.as_str(), &m.signer, m.price * m.amount)
+                        .unwrap();
+                }),
+                Side::Sell => receipt.matches.iter().for_each(|m| {
+                    self.send(&m.signer, order_signer.as_str(), m.price * m.amount)
+                        .unwrap();
+                }),
+            }
+
+            Ok(receipt)
+        }
     }
 }
 
