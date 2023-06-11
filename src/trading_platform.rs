@@ -120,7 +120,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
+    // #[ignore]
     fn test_TradingPlatform_order_requires_deposit_to_order() {
         let mut trading_platform = TradingPlatform::new();
 
