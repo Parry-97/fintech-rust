@@ -46,7 +46,17 @@ impl MatchingEngine {
         let receipt = match &partial.side {
             Side::Buy => {
                 // Implement this side of the matching!
-                todo!();
+                let orderbook_entry = self.asks.range_mut(0..=partial.price);
+                let receipt = MatchingEngine::match_order(&partial, orderbook_entry, ordinal)?;
+                let matched_amount: u64 = receipt.matches.iter().map(|m| m.amount).sum();
+
+                if matched_amount < original_amount {
+                    partial.amount = original_amount - matched_amount;
+                    let price = partial.price;
+                    let bids = self.bids.entry(price).or_insert(vec![].into());
+                    bids.push(partial);
+                }
+                receipt
             }
             Side::Sell => {
                 // Fetch all orders in the expected price range from this side of the orderbook
@@ -100,8 +110,38 @@ impl MatchingEngine {
                     // 2 check if it's your own order
                     // 3 subtract the amount from your current order and decide
                     //   a. is there anything left from the match? split the Order into two and put one back into the orderbook entry
-                    //   b. if nothing is left, add the full order to your matches and continue from 1
-                    todo!()
+                    let mut self_matches: Vec<PartialOrder> = vec![];
+                    while let Some(mut lowest) = orderbook_entry.pop() {
+                        if lowest.signer == order.signer {
+                            self_matches.push(lowest);
+                        } else {
+                            if remaining_amount <= lowest.amount {
+                                matches.push(PartialOrder {
+                                    amount: remaining_amount,
+                                    remaining: 0,
+                                    ..lowest.clone()
+                                });
+                                let overflow = remaining_amount.checked_sub(lowest.amount);
+                                if let None = overflow {
+                                    orderbook_entry.push(PartialOrder {
+                                        amount: lowest.amount - remaining_amount,
+                                        ..lowest.clone()
+                                    });
+                                }
+                                break 'outer;
+                            } else {
+                                remaining_amount -= lowest.remaining;
+                                matches.push(PartialOrder {
+                                    amount: lowest.amount,
+                                    remaining: 0,
+                                    ..lowest.clone()
+                                })
+                            }
+                        }
+                    }
+                    for self_match in self_matches {
+                        orderbook_entry.push(self_match);
+                    }
                 }
                 // Nothing left to match with
                 None => break 'outer,
@@ -121,7 +161,40 @@ mod tests {
     #[test]
     fn test_MatchingEngine_process_partially_match_order() {
         // Immplement me
-        todo!();
+        let mut matching_engine = MatchingEngine::new();
+        let alice_receipt = matching_engine
+            .process(Order {
+                price: 10,
+                amount: 1,
+                side: Side::Sell,
+                signer: "ALICE".to_string(),
+            })
+            .unwrap();
+        assert_eq!(alice_receipt.matches, vec![]);
+        assert_eq!(alice_receipt.ordinal, 1);
+        let bob_receipt = matching_engine
+            .process(Order {
+                price: 10,
+                amount: 2,
+                side: Side::Buy,
+                signer: "BOB".to_string(),
+            })
+            .unwrap();
+
+        assert_eq!(
+            bob_receipt.matches,
+            vec![PartialOrder {
+                price: 10,
+                amount: 1,
+                remaining: 0,
+                side: Side::Sell,
+                ordinal: 1,
+                signer: "ALICE".to_string()
+            }]
+        );
+
+        assert!(matching_engine.asks.is_empty());
+        assert!(!matching_engine.bids.is_empty());
     }
 
     #[test]
