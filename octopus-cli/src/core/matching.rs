@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, BinaryHeap};
 
-use crate::{
-    core::{Order, Receipt, Side},
+use octopus_common::{
     errors::ApplicationError,
+    types::{Order, Receipt, Side},
 };
 
-use super::PartialOrder;
+use octopus_common::types::PartialOrder;
 
 #[derive(Default, Debug)]
 pub struct MatchingEngine {

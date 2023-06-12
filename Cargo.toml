@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "octopus-cli",
+    "octopus-common",
+    "octopus-web",
+]

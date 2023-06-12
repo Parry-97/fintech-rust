@@ -1,9 +1,8 @@
-use crate::{
-    accounting::Accounts,
-    core::{MatchingEngine, Order, PartialOrder, Receipt, Side},
-    errors::ApplicationError,
-    tx::Tx,
-};
+use octopus_common::types::{Order, PartialOrder, Receipt, Side};
+use octopus_common::{errors::ApplicationError, tx::Tx};
+
+use crate::accounting::Accounts;
+use crate::core::MatchingEngine;
 
 /// The core of the core: the [`TradingPlatform`]. Manages accounts, validates-, and orchestrates the processing of each order.
 ///

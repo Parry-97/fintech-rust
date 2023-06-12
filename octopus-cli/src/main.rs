@@ -1,13 +1,9 @@
 use std::{io, num::ParseIntError};
 mod accounting;
 mod core;
-mod errors;
 mod trading_platform;
-mod tx;
-use crate::{
-    core::{Order, Side},
-    trading_platform::TradingPlatform,
-};
+use octopus_common::types::{Order, Side};
+use trading_platform::TradingPlatform;
 
 fn read_order_parameters() -> Result<Order, String> {
     let account = read_from_stdin("Account:");

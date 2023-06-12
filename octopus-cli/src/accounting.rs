@@ -1,4 +1,4 @@
-use crate::{errors::ApplicationError, tx::Tx};
+use octopus_common::{errors::ApplicationError, tx::Tx};
 use std::collections::HashMap;
 
 /// A type for managing accounts and their current currency balance

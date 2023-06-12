@@ -5,3 +5,14 @@ version = 3
 [[package]]
 name = "octopus-cli-prov"
 version = "0.1.0"
+dependencies = [
+ "octopus-common",
+]
+
+[[package]]
+name = "octopus-common"
+version = "0.1.0"
+
+[[package]]
+name = "octopus-web"
+version = "0.1.0"
