@@ -45,6 +45,9 @@ impl TradingPlatform {
         asks.append(&mut bids);
         asks
     }
+    pub fn txlog(&self) -> Vec<Tx> {
+        self.tx_log.clone()
+    }
 
     /// Withdraw funds
     pub fn balance_of(&mut self, signer: &str) -> Result<&u64, ApplicationError> {

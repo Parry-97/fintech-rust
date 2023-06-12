@@ -4,7 +4,11 @@ mod core;
 mod errors;
 mod trading_platform;
 mod tx;
-use crate::accounting::Accounts;
+use crate::{
+    accounting::Accounts,
+    core::{Order, Side},
+    trading_platform::TradingPlatform,
+};
 
 fn read_from_stdin(label: &str) -> String {
     let mut buffer = String::new();
@@ -18,10 +22,10 @@ fn read_from_stdin(label: &str) -> String {
 fn main() {
     println!("Hello, accounting world!");
 
-    let mut ledger = Accounts::new();
+    let mut trading_platform = TradingPlatform::new();
     loop {
         let input = read_from_stdin(
-            "Choose operation [deposit, withdraw, send, print, quit], confirm with return:",
+            "Choose operation [deposit, withdraw, send, order, txlog, orderbook, print, quit], confirm with return:",
         );
         match input.as_str() {
             "deposit" => {
@@ -29,7 +33,7 @@ fn main() {
 
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.deposit(&account, amount);
+                    let _ = trading_platform.deposit(&account, amount);
                     println!("Deposited {} into account '{}'", amount, account)
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
@@ -39,7 +43,7 @@ fn main() {
                 let account = read_from_stdin("Account:");
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.withdraw(&account, amount);
+                    let _ = trading_platform.withdraw(&account, amount);
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
                 }
@@ -49,13 +53,67 @@ fn main() {
                 let recipient = read_from_stdin("Recipient Account:");
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.send(&sender, &recipient, amount);
+                    let _ = trading_platform.send(&sender, &recipient, amount);
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
                 }
             }
+            "order" => {
+                let signer = read_from_stdin("Order Signer");
+                let mut raw_amount = read_from_stdin("Order Amount").parse();
+                let amount: u64;
+                while raw_amount.is_err() {
+                    raw_amount = read_from_stdin("Order Amount").parse();
+                }
+                amount = raw_amount.unwrap();
+
+                let mut raw_price = read_from_stdin("Order Price").parse();
+                let price: u64;
+                while raw_price.is_err() {
+                    raw_price = read_from_stdin("Order Price").parse();
+                }
+                price = raw_price.unwrap();
+
+                let side: Side;
+
+                loop {
+                    let raw_side = read_from_stdin("Order side");
+                    match raw_side.as_str() {
+                        "Buy" => {
+                            side = Side::Buy;
+                            break;
+                        }
+                        "Sell" => {
+                            side = Side::Sell;
+                            break;
+                        }
+                        _ => continue,
+                    }
+                }
+
+                if let Err(
+                    errors::ApplicationError::AccountUnderFunded(msg, _)
+                    | errors::ApplicationError::AccountNotFound(msg),
+                ) = trading_platform.order(Order {
+                    price,
+                    amount,
+                    side,
+                    signer,
+                }) {
+                    eprintln!("Error occured during order: {}", msg);
+                }
+            }
+            "orderbook" => {
+                println!("Orderbook: {:?}", trading_platform.orderbook());
+            }
+
+            "txlog" => {
+                println!("Transaction Log: {:?}", trading_platform.txlog());
+            }
+
             "print" => {
-                println!("The ledger: {:?}", ledger);
+                println!("Orderbook: {:?}", trading_platform.orderbook());
+                println!("Transaction Log: {:?}", trading_platform.txlog());
             }
             "quit" => {
                 println!("Quitting...");
