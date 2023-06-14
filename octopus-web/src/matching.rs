@@ -2,10 +2,8 @@ use std::collections::{BTreeMap, BinaryHeap};
 
 use octopus_common::{
     errors::ApplicationError,
-    types::{Order, Receipt, Side},
+    types::{Order, PartialOrder, Receipt, Side},
 };
-
-use octopus_common::types::PartialOrder;
 
 #[derive(Default, Debug)]
 pub struct MatchingEngine {

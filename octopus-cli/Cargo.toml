@@ -1,5 +1,5 @@
 [package]
-name = "octopus-cli-prov"
+name = "octopus-cli"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 octopus-common = {version = "*", path = "../octopus-common"}
+octopus-web = {version = "*", path = "../octopus-web"}

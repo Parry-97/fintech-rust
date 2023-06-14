@@ -1,7 +1,12 @@
 use std::cmp::Reverse;
 
+use serde::{Deserialize, Serialize};
+use warp::reject::Reject;
+
+use crate::errors::ApplicationError;
+
 /// Simplified side of a position as well as order.
-#[derive(Clone, PartialOrd, PartialEq, Eq, Debug, Ord)]
+#[derive(Serialize, Deserialize, Clone, PartialOrd, PartialEq, Eq, Debug, Ord)]
 pub enum Side {
     /// Want to buy
     Buy,
@@ -9,8 +14,32 @@ pub enum Side {
     Sell,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct AccountUpdateRequest {
+    signer: String,
+    amount: u64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AccountBalanceRequest {
+    signer: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SendRequest {
+    sender: String,
+    recipient: String,
+}
+
+#[derive(Debug)]
+pub struct OctopusError(ApplicationError);
+
+impl Reject for OctopusError {
+    // add code here
+}
+
 /// An order for a specified symbol to buy or sell an amount at a given price.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Order {
     /// Max/min price (depending on the side)
     pub price: u64,
