@@ -20,28 +20,32 @@ async fn main() {
         .and(body::json::<AccountBalanceRequest>())
         .and_then(account);
 
-    let withdraw_route = warp::path("withdraw")
+    let withdraw_route = account_path
+        .and(warp::path("withdraw"))
         .and(warp::post())
         .and(with_db(Arc::clone(&db)))
-        .and((body::json::<AccountUpdateRequest>()))
+        .and(body::json::<AccountUpdateRequest>())
         .and_then(withdraw);
 
-    let deposit_route = warp::path("deposit")
+    let deposit_route = account_path
+        .and(warp::path("deposit"))
         .and(warp::post())
         .and(with_db(Arc::clone(&db)))
-        .and((body::json::<AccountUpdateRequest>()))
+        .and(body::json::<AccountUpdateRequest>())
         .and_then(deposit);
 
-    let send_route = warp::path("send")
+    let send_route = account_path
+        .and(warp::path("send"))
         .and(warp::post())
         .and(with_db(Arc::clone(&db)))
-        .and((body::json::<SendRequest>()))
+        .and(body::json::<SendRequest>())
         .and_then(send);
 
-    let order_route = warp::path("order")
+    let order_route = account_path
+        .and(warp::path("order"))
         .and(warp::post())
         .and(with_db(Arc::clone(&db)))
-        .and((body::json::<Order>()))
+        .and(body::json::<Order>())
         .and_then(order);
 
     let account_route = balance_route

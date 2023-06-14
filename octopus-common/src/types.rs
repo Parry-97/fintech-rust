@@ -29,6 +29,7 @@ pub struct AccountBalanceRequest {
 pub struct SendRequest {
     sender: String,
     recipient: String,
+    amount: u64,
 }
 
 #[derive(Debug)]
