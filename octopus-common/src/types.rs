@@ -16,24 +16,35 @@ pub enum Side {
 
 #[derive(Deserialize, Debug)]
 pub struct AccountUpdateRequest {
-    signer: String,
-    amount: u64,
+    pub signer: String,
+    pub amount: u64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct AccountBalanceRequest {
-    signer: String,
+    pub signer: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SendRequest {
-    sender: String,
-    recipient: String,
-    amount: u64,
+    pub sender: String,
+    pub recipient: String,
+    pub amount: u64,
 }
 
 #[derive(Debug)]
 pub struct OctopusError(ApplicationError);
+
+#[derive(Serialize)]
+struct ErrorMessage {
+    code: u16,
+    message: String,
+}
+impl OctopusError {
+    pub fn new(error: ApplicationError) -> Self {
+        OctopusError(error)
+    }
+}
 
 impl Reject for OctopusError {
     // add code here
@@ -73,7 +84,7 @@ impl Order {
 }
 
 /// A position represents an unfilled order that is kept in the system for later filling.
-#[derive(Clone, PartialEq, Debug, Eq, Ord)]
+#[derive(Serialize, Clone, PartialEq, Debug, Eq, Ord)]
 pub struct PartialOrder {
     /// Price per unit
     pub price: u64,
@@ -97,7 +108,7 @@ impl PartialOrd for PartialOrder {
 }
 
 /// A receipt issued to the caller for accepting an [`Order`]
-#[derive(Clone, PartialOrd, PartialEq, Eq, Debug)]
+#[derive(Serialize, Clone, PartialOrd, PartialEq, Eq, Debug)]
 pub struct Receipt {
     /// Sequence number
     pub ordinal: u64,
