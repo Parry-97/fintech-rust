@@ -190,9 +190,29 @@ async fn main() {
                     }
                 }
             }
+
+            "history" => {
+                let response = client
+                    .get(format!("{}/order/history", service_path))
+                    .send()
+                    .await
+                    .expect(
+                        "The history request should be directed to the trading platform service",
+                    )
+                    .json::<serde_json::Value>()
+                    .await;
+                match response {
+                    Ok(history) => {
+                        // println!("Current orderbook : {:#?}", orderbook);
+                        println!("{:#?}", history)
+                    }
+
+                    Err(inner) => eprintln!("Error occured: {}", inner),
+                }
+            }
             "orderbook" => {
                 let response = client
-                    .post(format!("{}/orderbook", service_path))
+                    .get(format!("{}/orderbook", service_path))
                     .send()
                     .await
                     .expect(

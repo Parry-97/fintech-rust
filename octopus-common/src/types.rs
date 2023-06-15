@@ -35,7 +35,7 @@ pub struct SendRequest {
 #[derive(Debug)]
 pub struct OctopusError(pub ApplicationError);
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ErrorMessage {
     pub code: u16,
     pub message: String,
