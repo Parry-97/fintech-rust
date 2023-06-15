@@ -1,11 +1,14 @@
-use std::{convert::Infallible, sync::Arc};
+use std::{convert::Infallible, error::Error, sync::Arc};
 
-use octopus_common::types::{
-    AccountBalanceRequest, AccountUpdateRequest, OctopusError, Order, SendRequest,
+use octopus_common::{
+    errors::ApplicationError,
+    types::{
+        AccountBalanceRequest, AccountUpdateRequest, ErrorMessage, OctopusError, Order, SendRequest,
+    },
 };
 use octopus_web::trading_platform::TradingPlatform;
 use tokio::sync::Mutex;
-use warp::{body, Filter, Rejection, Reply};
+use warp::{body, hyper::StatusCode, Filter, Rejection, Reply};
 
 #[tokio::main]
 async fn main() {
@@ -71,8 +74,7 @@ async fn main() {
         .or(order_route)
         .or(history_route)
         .or(orderbook_route)
-        // .recover(error_handler)
-    ;
+        .recover(error_handler);
 
     warp::serve(account_route).run(([127, 0, 0, 1], 3000)).await;
 }
@@ -119,6 +121,69 @@ async fn history(db: Db) -> Result<impl Reply, Infallible> {
 
 async fn orderbook(db: Db) -> Result<impl Reply, Infallible> {
     Ok(warp::reply::json(&(db.lock().await.orderbook())))
+}
+
+async fn error_handler(err: Rejection) -> Result<impl Reply, Infallible> {
+    let code;
+    let message: String;
+
+    if err.is_not_found() {
+        code = StatusCode::NOT_FOUND;
+        message = "NOT_FOUND".to_owned();
+    } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
+        // This error happens if the body could not be deserialized correctly
+        // We can use the cause to analyze the error and customize the error message
+        message = match e.source() {
+            Some(cause) => {
+                if cause.to_string().contains("denom") {
+                    "FIELD_ERROR: denom".to_owned()
+                } else {
+                    "BAD_REQUEST".to_owned()
+                }
+            }
+            None => "BAD_REQUEST".to_owned(),
+        };
+        code = StatusCode::BAD_REQUEST;
+    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+        // We can handle a specific error, here METHOD_NOT_ALLOWED,
+        // and render it however we want
+        code = StatusCode::METHOD_NOT_ALLOWED;
+        message = "METHOD_NOT_ALLOWED".to_owned();
+    } else if let Some(octopus_error) = err.find::<OctopusError>() {
+        match octopus_error {
+            OctopusError(ApplicationError::AccountNotFound(signer)) => {
+                code = StatusCode::NOT_FOUND;
+                message = format!("Cannot find account {}", signer);
+            }
+
+            OctopusError(ApplicationError::AccountOverFunded(signer, amount)) => {
+                code = StatusCode::INTERNAL_SERVER_ERROR;
+                message = format!(
+                    "Cannot exceed maximum with deposit of {} to  account {}",
+                    amount, signer
+                );
+            }
+            OctopusError(ApplicationError::AccountUnderFunded(signer, amount)) => {
+                code = StatusCode::INTERNAL_SERVER_ERROR;
+                message = format!(
+                    "Cannot withdraw from {}  from underfunded  account {}",
+                    amount, signer
+                );
+            }
+        }
+    } else {
+        // We should have expected this... Just log and say its a 500
+        eprintln!("unhandled rejection: {:?}", err);
+        code = StatusCode::INTERNAL_SERVER_ERROR;
+        message = "UNHANDLED_REJECTION".to_owned();
+    }
+
+    let json = warp::reply::json(&ErrorMessage {
+        code: code.as_u16(),
+        message,
+    });
+
+    Ok(warp::reply::with_status(json, code))
 }
 
 type Db = Arc<Mutex<TradingPlatform>>;

@@ -33,12 +33,12 @@ pub struct SendRequest {
 }
 
 #[derive(Debug)]
-pub struct OctopusError(ApplicationError);
+pub struct OctopusError(pub ApplicationError);
 
 #[derive(Serialize)]
-struct ErrorMessage {
-    code: u16,
-    message: String,
+pub struct ErrorMessage {
+    pub code: u16,
+    pub message: String,
 }
 impl OctopusError {
     pub fn new(error: ApplicationError) -> Self {

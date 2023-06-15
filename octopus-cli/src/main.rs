@@ -1,6 +1,6 @@
 use octopus_common::{
     tx::Tx,
-    types::{AccountUpdateRequest, Order, PartialOrder, Receipt, SendRequest, Side},
+    types::{AccountUpdateRequest, ErrorMessage, Order, PartialOrder, Receipt, SendRequest, Side},
 };
 use reqwest::Url;
 use std::{env, io, num::ParseIntError};
@@ -71,17 +71,18 @@ async fn main() {
                         .send()
                         .await
                         .expect("The deposit request should be directed to the trading platform service")
-                        .json()
+                        .json::<serde_json::Value>()
                         .await;
                     match deposit {
                         Ok(deposit) => {
-                            if let Tx::Deposit {
-                                account: signer,
-                                amount: deposited,
-                            } = deposit
-                            {
-                                println!("Deposited {} into account '{}'", deposited, signer)
-                            }
+                            // if let Tx::Deposit {
+                            //     account: signer,
+                            //     amount: deposited,
+                            // } = deposit.
+                            // {
+                            //     println!("Deposited {} into account '{}'", deposited, signer)
+                            // }
+                            println!("{:#?}", deposit)
                         }
                         Err(inner) => eprintln!("Error occured: {}", inner),
                     }
@@ -102,17 +103,18 @@ async fn main() {
                         .send()
                         .await
                         .expect("The withdraw request should be directed to the trading platform service")
-                        .json()
+                        .json::<serde_json::Value>()
                         .await;
                     match withdraw {
                         Ok(withdraw) => {
-                            if let Tx::Withdraw {
-                                account: signer,
-                                amount: withdrawn,
-                            } = withdraw
-                            {
-                                println!("Withdrawn {} from account '{}'", withdrawn, signer)
-                            }
+                            // if let Tx::Withdraw {
+                            //     account: signer,
+                            //     amount: withdrawn,
+                            // } = withdraw
+                            // {
+                            //     println!("Withdrawn {} from account '{}'", withdrawn, signer)
+                            // }
+                            println!("{:#?}", withdraw)
                         }
                         Err(inner) => eprintln!("Error occured: {}", inner),
                     }
@@ -135,25 +137,27 @@ async fn main() {
                         .send()
                         .await
                         .expect("The withdraw request should be directed to the trading platform service")
-                        .json()
+                        .json::<serde_json::Value>()
                         .await;
 
                     match response {
                         Ok(send_response) => {
-                            if let (
-                                Tx::Withdraw {
-                                    account: signer,
-                                    amount: withdrawn,
-                                },
-                                Tx::Deposit {
-                                    account: receiver,
-                                    amount: received,
-                                },
-                            ) = send_response
-                            {
-                                println!("Withdrawn {} from account '{}'", withdrawn, signer);
-                                println!("Deposited {} to account '{}'", received, receiver);
-                            }
+                            // if let (
+                            //     Tx::Withdraw {
+                            //         account: signer,
+                            //         amount: withdrawn,
+                            //     },
+                            //     Tx::Deposit {
+                            //         account: receiver,
+                            //         amount: received,
+                            //     },
+                            // ) = send_response
+                            // {
+                            //     println!("Withdrawn {} from account '{}'", withdrawn, signer);
+                            //     println!("Deposited {} to account '{}'", received, receiver);
+                            // }
+
+                            println!("{:#?}", send_response)
                         }
                         Err(inner) => eprintln!("Error occured: {}", inner),
                     }
@@ -170,12 +174,13 @@ async fn main() {
                         .send()
                         .await
                         .expect("The order request should be directed to the trading platform service")
-                        .json::<Receipt>()
+                        .json::<serde_json::Value>()
                         .await;
 
                         match response {
                             Ok(receipt) => {
-                                println!("Receipt from the order: {:#?}", receipt)
+                                // println!("Receipt from the order: {:#?}", receipt)
+                                println!("{:#?}", receipt)
                             }
                             Err(inner) => eprintln!("Error occured: {}", inner),
                         }
@@ -193,11 +198,12 @@ async fn main() {
                     .expect(
                         "The orderbook request should be directed to the trading platform service",
                     )
-                    .json::<Vec<PartialOrder>>()
+                    .json::<serde_json::Value>()
                     .await;
                 match response {
                     Ok(orderbook) => {
-                        println!("Current orderbook : {:#?}", orderbook);
+                        // println!("Current orderbook : {:#?}", orderbook);
+                        println!("{:#?}", orderbook)
                     }
 
                     Err(inner) => eprintln!("Error occured: {}", inner),
