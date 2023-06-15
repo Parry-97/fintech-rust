@@ -76,7 +76,7 @@ async fn main() {
         .or(orderbook_route)
         .recover(error_handler);
 
-    warp::serve(account_route).run(([127, 0, 0, 1], 3000)).await;
+    warp::serve(account_route).run(([127, 0, 0, 1], 8080)).await;
 }
 async fn account(db: Db, req: AccountBalanceRequest) -> Result<impl Reply, Rejection> {
     match db.lock().await.balance_of(&req.signer) {
