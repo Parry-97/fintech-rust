@@ -14,7 +14,7 @@ pub enum Side {
     Sell,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AccountUpdateRequest {
     pub signer: String,
     pub amount: u64,
@@ -25,7 +25,7 @@ pub struct AccountBalanceRequest {
     pub signer: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SendRequest {
     pub sender: String,
     pub recipient: String,
@@ -84,7 +84,7 @@ impl Order {
 }
 
 /// A position represents an unfilled order that is kept in the system for later filling.
-#[derive(Serialize, Clone, PartialEq, Debug, Eq, Ord)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Eq, Ord)]
 pub struct PartialOrder {
     /// Price per unit
     pub price: u64,
@@ -108,7 +108,7 @@ impl PartialOrd for PartialOrder {
 }
 
 /// A receipt issued to the caller for accepting an [`Order`]
-#[derive(Serialize, Clone, PartialOrd, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialOrd, PartialEq, Eq, Debug)]
 pub struct Receipt {
     /// Sequence number
     pub ordinal: u64,

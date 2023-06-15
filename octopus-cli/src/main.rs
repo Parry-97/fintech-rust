@@ -1,6 +1,9 @@
-use octopus_common::types::{Order, Side};
-use octopus_web::trading_platform::TradingPlatform;
-use std::{io, num::ParseIntError};
+use octopus_common::{
+    tx::Tx,
+    types::{AccountUpdateRequest, Order, PartialOrder, Receipt, SendRequest, Side},
+};
+use reqwest::Url;
+use std::{env, io, num::ParseIntError};
 
 fn read_order_parameters() -> Result<Order, String> {
     let account = read_from_stdin("Account:");
@@ -32,14 +35,26 @@ fn read_from_stdin(label: &str) -> String {
         .expect("Couldn't read from stdin");
     buffer.trim().to_owned()
 }
+#[tokio::main]
+async fn main() {
+    let args: Vec<String> = env::args().collect();
+    let client = reqwest::Client::new();
+    let service_path = args.get(1);
 
-fn main() {
-    println!("Hello, accounting world!");
+    if service_path.is_none() {
+        eprintln!("Please specify the service path to connect to");
+        return;
+    }
 
-    let mut ledger = TradingPlatform::new();
+    let service_path = service_path.unwrap();
+    if Url::parse(service_path).is_err() {
+        eprintln!("Please specify the serice path to connect to");
+        return;
+    }
+
     loop {
         let input = read_from_stdin(
-            "Choose operation [deposit, withdraw, send, print, txlog, order, orderbook, quit], confirm with return:",
+            "Choose operation [deposit, withdraw, send, history, order, orderbook, quit], confirm with return:",
         );
         match input.as_str() {
             "deposit" => {
@@ -47,8 +62,29 @@ fn main() {
 
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.deposit(&account, amount);
-                    println!("Deposited {} into account '{}'", amount, account)
+                    let deposit = client
+                        .post(format!("{}/account/deposit", service_path))
+                        .json(&AccountUpdateRequest {
+                            signer: account,
+                            amount,
+                        })
+                        .send()
+                        .await
+                        .expect("The deposit request should be directed to the trading platform service")
+                        .json()
+                        .await;
+                    match deposit {
+                        Ok(deposit) => {
+                            if let Tx::Deposit {
+                                account: signer,
+                                amount: deposited,
+                            } = deposit
+                            {
+                                println!("Deposited {} into account '{}'", deposited, signer)
+                            }
+                        }
+                        Err(inner) => eprintln!("Error occured: {}", inner),
+                    }
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
                 }
@@ -57,7 +93,29 @@ fn main() {
                 let account = read_from_stdin("Account:");
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.withdraw(&account, amount);
+                    let withdraw = client
+                        .post(format!("{}/account/withdraw", service_path))
+                        .json(&AccountUpdateRequest {
+                            signer:account,
+                            amount,
+                        })
+                        .send()
+                        .await
+                        .expect("The withdraw request should be directed to the trading platform service")
+                        .json()
+                        .await;
+                    match withdraw {
+                        Ok(withdraw) => {
+                            if let Tx::Withdraw {
+                                account: signer,
+                                amount: withdrawn,
+                            } = withdraw
+                            {
+                                println!("Withdrawn {} from account '{}'", withdrawn, signer)
+                            }
+                        }
+                        Err(inner) => eprintln!("Error occured: {}", inner),
+                    }
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
                 }
@@ -67,28 +125,90 @@ fn main() {
                 let recipient = read_from_stdin("Recipient Account:");
                 let raw_amount = read_from_stdin("Amount:").parse();
                 if let Ok(amount) = raw_amount {
-                    let _ = ledger.send(&sender, &recipient, amount);
+                    let response = client
+                        .post(format!("{}/account/send", service_path))
+                        .json(&SendRequest {
+                            sender,
+                            recipient,
+                            amount
+                        })
+                        .send()
+                        .await
+                        .expect("The withdraw request should be directed to the trading platform service")
+                        .json()
+                        .await;
+
+                    match response {
+                        Ok(send_response) => {
+                            if let (
+                                Tx::Withdraw {
+                                    account: signer,
+                                    amount: withdrawn,
+                                },
+                                Tx::Deposit {
+                                    account: receiver,
+                                    amount: received,
+                                },
+                            ) = send_response
+                            {
+                                println!("Withdrawn {} from account '{}'", withdrawn, signer);
+                                println!("Deposited {} to account '{}'", received, receiver);
+                            }
+                        }
+                        Err(inner) => eprintln!("Error occured: {}", inner),
+                    }
                 } else {
                     eprintln!("Not a number: '{:?}'", raw_amount);
                 }
             }
-            "order" => match read_order_parameters() {
-                Ok(order) => {
-                    println!("{:?}", ledger.order(order));
+            "order" => {
+                match read_order_parameters() {
+                    Ok(order) => {
+                        let response = client
+                        .post(format!("{}/order", service_path))
+                        .json(&order)
+                        .send()
+                        .await
+                        .expect("The order request should be directed to the trading platform service")
+                        .json::<Receipt>()
+                        .await;
+
+                        match response {
+                            Ok(receipt) => {
+                                println!("Receipt from the order: {:#?}", receipt)
+                            }
+                            Err(inner) => eprintln!("Error occured: {}", inner),
+                        }
+                    }
+                    Err(msg) => {
+                        eprintln!("Invalid Order parameters: '{:?}'", msg);
+                    }
                 }
-                Err(msg) => {
-                    eprintln!("Invalid Order parameters: '{:?}'", msg);
-                }
-            },
+            }
             "orderbook" => {
-                println!("The orderbook: {:#?}", ledger.orderbook());
+                let response = client
+                    .post(format!("{}/orderbook", service_path))
+                    .send()
+                    .await
+                    .expect(
+                        "The orderbook request should be directed to the trading platform service",
+                    )
+                    .json::<Vec<PartialOrder>>()
+                    .await;
+                match response {
+                    Ok(orderbook) => {
+                        println!("Current orderbook : {:#?}", orderbook);
+                    }
+
+                    Err(inner) => eprintln!("Error occured: {}", inner),
+                }
             }
-            "txlog" => {
-                println!("The TX log: {:#?}", ledger.transactions);
-            }
-            "print" => {
-                println!("The ledger: {:?}", ledger.accounts);
-            }
+            // "txlog" => {
+            //     println!("The TX log: {:#?}", ledger.transactions);
+            // }
+            // "print" => {
+            //     println!("The ledger: {:?}", ledger.accounts);
+            // }
             "quit" => {
                 println!("Quitting...");
                 break;
